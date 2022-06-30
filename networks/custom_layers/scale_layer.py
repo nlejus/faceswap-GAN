@@ -17,7 +17,7 @@ class Scale(Layer):
         self.input_spec = [InputSpec(shape=input_shape)]
 
         # Compatibility with TensorFlow >= 1.0.0
-        self.gamma = K.variable(self.gamma_init((1,)), name='{}_gamma'.format(self.name))
+        self.gamma = K.variable(self.gamma_init((1,)), name=f'{self.name}_gamma')
         self.trainable_weights = [self.gamma]
 
         if self.initial_weights is not None:

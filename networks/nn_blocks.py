@@ -19,27 +19,26 @@ def self_attn_block(inp, nc, squeeze_factor=8):
     assert nc//squeeze_factor > 0, f"Input channels must be >= {squeeze_factor}, recieved nc={nc}"
     x = inp
     shape_x = x.get_shape().as_list()
-    
+
     f = Conv2D(nc//squeeze_factor, 1, kernel_regularizer=regularizers.l2(w_l2))(x)
     g = Conv2D(nc//squeeze_factor, 1, kernel_regularizer=regularizers.l2(w_l2))(x)
     h = Conv2D(nc, 1, kernel_regularizer=regularizers.l2(w_l2))(x)
-    
+
     shape_f = f.get_shape().as_list()
     shape_g = g.get_shape().as_list()
     shape_h = h.get_shape().as_list()
     flat_f = Reshape((-1, shape_f[-1]))(f)
     flat_g = Reshape((-1, shape_g[-1]))(g)
     flat_h = Reshape((-1, shape_h[-1]))(h)   
-    
+
     s = Lambda(lambda x: K.batch_dot(x[0], Permute((2,1))(x[1])))([flat_g, flat_f])
 
     beta = Softmax(axis=-1)(s)
     o = Lambda(lambda x: K.batch_dot(x[0], x[1]))([beta, flat_h])
     o = Reshape(shape_x[1:])(o)
     o = Scale()(o)
-    
-    out = add([o, inp])
-    return out
+
+    return add([o, inp])
 
 def dual_attn_block(inp, nc, squeeze_factor=8):
     '''
@@ -48,7 +47,7 @@ def dual_attn_block(inp, nc, squeeze_factor=8):
     assert nc//squeeze_factor > 0, f"Input channels must be >= {squeeze_factor}, recieved nc={nc}"
     x = inp
     shape_x = x.get_shape().as_list()
-    
+
     # position attention module
     x_pam = Conv2D(nc, kernel_size=3, kernel_regularizer=regularizers.l2(w_l2),  
                kernel_initializer=conv_init, use_bias=False, padding="same")(x)
@@ -56,24 +55,24 @@ def dual_attn_block(inp, nc, squeeze_factor=8):
     x_pam = normalization(x_pam, norm, nc)
     f_pam = Conv2D(nc//squeeze_factor, 1, kernel_regularizer=regularizers.l2(w_l2))(x_pam)
     g_pam = Conv2D(nc//squeeze_factor, 1, kernel_regularizer=regularizers.l2(w_l2))(x_pam)
-    h_pam = Conv2D(nc, 1, kernel_regularizer=regularizers.l2(w_l2))(x_pam)    
+    h_pam = Conv2D(nc, 1, kernel_regularizer=regularizers.l2(w_l2))(x_pam)
     shape_f_pam = f_pam.get_shape().as_list()
     shape_g_pam = g_pam.get_shape().as_list()
     shape_h_pam = h_pam.get_shape().as_list()
     flat_f_pam = Reshape((-1, shape_f_pam[-1]))(f_pam)
     flat_g_pam = Reshape((-1, shape_g_pam[-1]))(g_pam)
-    flat_h_pam = Reshape((-1, shape_h_pam[-1]))(h_pam)    
+    flat_h_pam = Reshape((-1, shape_h_pam[-1]))(h_pam)
     s_pam = Lambda(lambda x: K.batch_dot(x[0], Permute((2,1))(x[1])))([flat_g_pam, flat_f_pam])
     beta_pam = Softmax(axis=-1)(s_pam)
     o_pam = Lambda(lambda x: K.batch_dot(x[0], x[1]))([beta_pam, flat_h_pam])
     o_pam = Reshape(shape_x[1:])(o_pam)
-    o_pam = Scale()(o_pam)    
+    o_pam = Scale()(o_pam)
     out_pam = add([o_pam, x_pam])
     out_pam = Conv2D(nc, kernel_size=3, kernel_regularizer=regularizers.l2(w_l2),  
                kernel_initializer=conv_init, use_bias=False, padding="same")(out_pam)
     out_pam = Activation("relu")(out_pam)
     out_pam = normalization(out_pam, norm, nc)
-    
+
     # channel attention module
     x_chn = Conv2D(nc, kernel_size=3, kernel_regularizer=regularizers.l2(w_l2),  
                kernel_initializer=conv_init, use_bias=False, padding="same")(x)
@@ -82,22 +81,21 @@ def dual_attn_block(inp, nc, squeeze_factor=8):
     shape_x_chn = x_chn.get_shape().as_list()
     flat_f_chn = Reshape((-1, shape_x_chn[-1]))(x_chn)
     flat_g_chn = Reshape((-1, shape_x_chn[-1]))(x_chn)
-    flat_h_chn = Reshape((-1, shape_x_chn[-1]))(x_chn)    
+    flat_h_chn = Reshape((-1, shape_x_chn[-1]))(x_chn)
     s_chn = Lambda(lambda x: K.batch_dot(Permute((2,1))(x[0]), x[1]))([flat_g_chn, flat_f_chn])
     s_new_chn = Lambda(lambda x: K.repeat_elements(K.max(x, -1, keepdims=True), nc, -1))(s_chn)
     s_new_chn = Lambda(lambda x: x[0] - x[1])([s_new_chn, s_chn])
     beta_chn = Softmax(axis=-1)(s_new_chn)
     o_chn = Lambda(lambda x: K.batch_dot(x[0], Permute((2,1))(x[1])))([flat_h_chn, beta_chn])
     o_chn = Reshape(shape_x[1:])(o_chn)
-    o_chn = Scale()(o_chn)    
+    o_chn = Scale()(o_chn)
     out_chn = add([o_chn, x_chn])
     out_chn = Conv2D(nc, kernel_size=3, kernel_regularizer=regularizers.l2(w_l2),  
                kernel_initializer=conv_init, use_bias=False, padding="same")(out_chn)
     out_chn = Activation("relu")(out_chn)
     out_chn = normalization(out_chn, norm, nc)
-    
-    out = add([out_pam, out_chn])
-    return out
+
+    return add([out_pam, out_chn])
 
 def normalization(inp, norm='none', group='16'):    
     x = inp

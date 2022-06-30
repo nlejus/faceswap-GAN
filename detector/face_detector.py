@@ -121,8 +121,7 @@ class MTCNNFaceDetector():
     def remove_small_faces(faces, pnts, min_area=25*25):
         def compute_area(face_coord):
             x0, y1, x1, y0, _ = face_coord
-            area = np.abs((x1 - x0) * (y1 - y0))
-            return area
+            return np.abs((x1 - x0) * (y1 - y0))
             
         new_faces = []
         new_pnts = []

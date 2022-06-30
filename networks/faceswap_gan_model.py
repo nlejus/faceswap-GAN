@@ -25,7 +25,7 @@ class FaceswapGANModel():
         self.norm = arch_config['norm']
         self.model_capacity = arch_config['model_capacity']
         self.enc_nc_out = 256 if self.model_capacity == "lite" else 512
-        
+
         # define networks
         self.encoder = self.build_encoder(nc_in=self.nc_G_inp, 
                                           input_size=self.IMAGE_SHAPE[0], 
@@ -60,7 +60,7 @@ class FaceswapGANModel():
         x = Input(shape=self.IMAGE_SHAPE) # dummy input tensor
         self.netGA = Model(x, self.decoder_A(self.encoder(x)))
         self.netGB = Model(x, self.decoder_B(self.encoder(x)))
-        
+
         # define variables
         self.distorted_A, self.fake_A, self.mask_A, \
         self.path_A, self.path_mask_A, self.path_abgr_A, self.path_bgr_A = self.define_variables(netG=self.netGA)
@@ -81,22 +81,22 @@ class FaceswapGANModel():
         latent_dim = 2048 if (model_capacity == "lite" and input_size > 64) else 1024
         upscale_block = upscale_nn if model_capacity == "lite" else upscale_ps
         activ_map_size = input_size
-        use_norm = False if (norm == 'none') else True
-        
+        use_norm = norm != 'none'
+
         inp = Input(shape=(input_size, input_size, nc_in))
         x = Conv2D(64//coef, kernel_size=5, use_bias=False, padding="same")(inp) # use_bias should be True
         x = conv_block(x, 128//coef)
         x = conv_block(x, 256//coef, use_norm, norm=norm)
         x = self_attn_block(x, 256//coef) if use_self_attn else x
-        x = conv_block(x, 512//coef, use_norm, norm=norm) 
+        x = conv_block(x, 512//coef, use_norm, norm=norm)
         x = self_attn_block(x, 512//coef) if use_self_attn else x
         x = conv_block(x, 1024//(coef**2), use_norm, norm=norm)
-        
+
         activ_map_size = activ_map_size//16
         while (activ_map_size > 4):
             x = conv_block(x, 1024//(coef**2), use_norm, norm=norm)
             activ_map_size = activ_map_size//2
-        
+
         x = Dense(latent_dim)(Flatten()(x))
         x = Dense(4*4*1024//(coef**2))(x)
         x = Reshape((4, 4, 1024//(coef**2)))(x)
@@ -113,7 +113,7 @@ class FaceswapGANModel():
         coef = 2 if model_capacity == "lite" else 1
         upscale_block = upscale_nn if model_capacity == "lite" else upscale_ps
         activ_map_size = input_size
-        use_norm = False if (norm == 'none') else True
+        use_norm = norm != 'none'
 
         inp = Input(shape=(input_size, input_size, nc_in))
         x = inp
@@ -123,7 +123,7 @@ class FaceswapGANModel():
         x = upscale_block(x, 64//coef, use_norm, norm=norm)
         x = res_block(x, 64//coef, norm=norm)
         x = self_attn_block(x, 64//coef) if use_self_attn else conv_block(x, 64//coef, strides=1)
-        
+
         outputs = []
         activ_map_size = activ_map_size * 8
         while (activ_map_size < output_size):
@@ -131,7 +131,7 @@ class FaceswapGANModel():
             x = upscale_block(x, 64//coef, use_norm, norm=norm)
             x = conv_block(x, 64//coef, strides=1)
             activ_map_size *= 2
-        
+
         alpha = Conv2D(1, kernel_size=5, padding='same', activation="sigmoid")(x)
         bgr = Conv2D(3, kernel_size=5, padding='same', activation="tanh")(x)
         out = concatenate([alpha, bgr])
@@ -144,20 +144,20 @@ class FaceswapGANModel():
                             use_self_attn=True, 
                             norm='none'):  
         activ_map_size = input_size
-        use_norm = False if (norm == 'none') else True
-        
+        use_norm = norm != 'none'
+
         inp = Input(shape=(input_size, input_size, nc_in))
         x = conv_block_d(inp, 64, False)
         x = conv_block_d(x, 128, use_norm, norm=norm)
         x = conv_block_d(x, 256, use_norm, norm=norm)
         x = self_attn_block(x, 256) if use_self_attn else x
-        
+
         activ_map_size = activ_map_size//8
         while (activ_map_size > 8):
             x = conv_block_d(x, 256, use_norm, norm=norm)
             x = self_attn_block(x, 256) if use_self_attn else x
             activ_map_size = activ_map_size//2
-            
+
         out = Conv2D(1, kernel_size=4, use_bias=False, padding="same")(x) # use_bias should be True  
         return Model(inputs=[inp], outputs=out)
     
@@ -289,7 +289,6 @@ class FaceswapGANModel():
             print ("Model weights files are successfully loaded.")
         except:
             print ("Error occurs during loading weights files.")
-            pass
     
     def save_weights(self, path="./models"):
         try:
@@ -301,7 +300,6 @@ class FaceswapGANModel():
             print (f"Model weights files have been saved to {path}.")
         except:
             print ("Error occurs during saving weights.")
-            pass
         
     def train_one_batch_G(self, data_A, data_B):
         if len(data_A) == 4 and len(data_B) == 4:

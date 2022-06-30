@@ -44,7 +44,7 @@ def layer(op):
         name = kwargs.setdefault('name', self.get_unique_name(op.__name__))
         # Figure out the layer inputs.
         if len(self.terminals) == 0:
-            raise RuntimeError('No input variables found for layer %s.' % name)
+            raise RuntimeError(f'No input variables found for layer {name}.')
         elif len(self.terminals) == 1:
             layer_input = self.terminals[0]
         else:
@@ -107,7 +107,7 @@ class Network(object):
                 try:
                     fed_layer = self.layers[fed_layer]
                 except KeyError:
-                    raise KeyError('Unknown layer name fed: %s' % fed_layer)
+                    raise KeyError(f'Unknown layer name fed: {fed_layer}')
             self.terminals.append(fed_layer)
         return self
 
@@ -197,8 +197,7 @@ class Network(object):
             weights = self.make_var('weights', shape=[dim, num_out])
             biases = self.make_var('biases', [num_out])
             op = tf.nn.relu_layer if relu else tf.nn.xw_plus_b
-            fc = op(feed_in, weights, biases, name=name)
-            return fc
+            return op(feed_in, weights, biases, name=name)
 
 
     """
@@ -212,8 +211,7 @@ class Network(object):
         max_axis = tf.reduce_max(target, axis, keepdims=True)
         target_exp = tf.exp(target-max_axis)
         normalize = tf.reduce_sum(target_exp, axis, keepdims=True)
-        softmax = tf.div(target_exp, normalize, name)
-        return softmax
+        return tf.div(target_exp, normalize, name)
     
 class PNet(Network):
     def setup(self):

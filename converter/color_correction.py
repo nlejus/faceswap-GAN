@@ -66,11 +66,9 @@ def trans_color_space(im, color_space, rev=False):
     elif color_space.lower() == "luv":
         clr_spc = cv2.COLOR_BGR2Luv
         rev_clr_spc = cv2.COLOR_Luv2BGR
-    elif color_space.lower() == "rgb":
-        pass
-    else:
+    elif color_space.lower() != "rgb":
         raise NotImplementedError()
-        
+
     if color_space.lower() != "rgb":
         trans_clr_spc = rev_clr_spc if rev else clr_spc
         im = cv2.cvtColor(im, trans_clr_spc)

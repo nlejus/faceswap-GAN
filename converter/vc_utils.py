@@ -17,12 +17,12 @@ def get_init_triple_img(input_img, no_face=False):
     if no_face:
         triple_img = np.zeros([input_img.shape[0], input_img.shape[1]*3,input_img.shape[2]])
         triple_img[:, :input_img.shape[1], :] = input_img
-        triple_img[:, input_img.shape[1]:input_img.shape[1]*2, :] = input_img      
-        triple_img[:, input_img.shape[1]*2:, :] = (input_img * .15).astype('uint8')  
-        return triple_img
+        triple_img[:, input_img.shape[1]:input_img.shape[1]*2, :] = input_img
+        triple_img[:, input_img.shape[1]*2:, :] = (input_img * .15).astype('uint8')
     else:
         triple_img = np.zeros([input_img.shape[0], input_img.shape[1]*3,input_img.shape[2]])
-        return triple_img
+
+    return triple_img
 
 def get_mask(roi_image, h, w):
     mask = np.zeros_like(roi_image)

@@ -127,7 +127,7 @@ class FaceTransformer(object):
     @staticmethod
     def check_generator_model(model):
         if model is None: 
-            raise ValueError(f"Generator model has not been set.")
+            raise ValueError("Generator model has not been set.")
     
     @staticmethod
     def check_roi_coverage(inp_img, roi_coverage):
