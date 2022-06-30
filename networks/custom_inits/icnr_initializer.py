@@ -7,7 +7,7 @@ def icnr_keras(shape, dtype=None):
     Note: upscale factor is fixzed to 2, and the base initializer is fixed to random normal.
     """
     shape = list(shape)
-    
+
     scale = 2
     initializer = tf.keras.initializers.RandomNormal(0, 0.02)
 

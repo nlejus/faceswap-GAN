@@ -9,10 +9,7 @@ except:
     from keras.backend.common import normalize_data_format
 
 def to_list(x):
-    if type(x) not in [list, tuple]:
-        return [x]
-    else:
-        return list(x)
+    return [x] if type(x) not in [list, tuple] else list(x)
 
 class GroupNormalization(Layer):
     def __init__(self, axis=-1,
@@ -58,7 +55,7 @@ class GroupNormalization(Layer):
 
     def call(self, inputs, mask=None):
         input_shape = K.int_shape(inputs)
-        if len(input_shape) != 4 and len(input_shape) != 2:
+        if len(input_shape) not in [4, 2]:
             raise ValueError('Inputs should have rank ' +
                              str(4) + " or " + str(2) +
                              '; Received input shape:', str(input_shape))
@@ -68,7 +65,7 @@ class GroupNormalization(Layer):
                 batch_size, h, w, c = input_shape
                 if batch_size is None:
                     batch_size = -1
-                
+
                 if c < self.group:
                     raise ValueError('Input channels should be larger than group size' +
                                      '; Received input channels: ' + str(c) +
@@ -86,7 +83,7 @@ class GroupNormalization(Layer):
                 batch_size, c, h, w = input_shape
                 if batch_size is None:
                     batch_size = -1
-                
+
                 if c < self.group:
                     raise ValueError('Input channels should be larger than group size' +
                                      '; Received input channels: ' + str(c) +
@@ -100,18 +97,18 @@ class GroupNormalization(Layer):
 
                 x = K.reshape(x, (batch_size, c, h, w))
                 return self.gamma * x + self.beta
-                
+
         elif len(input_shape) == 2:
-            reduction_axes = list(range(0, len(input_shape)))
+            reduction_axes = list(range(len(input_shape)))
             del reduction_axes[0]
             batch_size, _ = input_shape
             if batch_size is None:
                 batch_size = -1
-                
+
             mean = K.mean(inputs, keepdims=True)
             std = K.sqrt(K.var(inputs, keepdims=True) + self.epsilon)
             x = (inputs  - mean) / std
-            
+
             return self.gamma * x + self.beta
             
 

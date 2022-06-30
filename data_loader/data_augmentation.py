@@ -31,7 +31,7 @@ def motion_blur(images, sz=7):
     return images
 
 def random_transform(image, rotation_range, zoom_range, shift_range, random_flip):
-    h,w = image.shape[0:2]
+    h,w = image.shape[:2]
     rotation = np.random.uniform(-rotation_range, rotation_range)
     scale = np.random.uniform(1 - zoom_range, 1 + zoom_range)
     tx = np.random.uniform(-shift_range, shift_range) * w
@@ -50,10 +50,10 @@ def random_warp_rev(image, res=64):
     interp_param = 80 * res_scale
     interp_slice = slice(interp_param//10,9*interp_param//10)
     dst_pnts_slice = slice(0,65*res_scale,16*res_scale)
-    
+
     rand_coverage = np.random.randint(20) + 78 # random warping coverage
     rand_scale = np.random.uniform(5., 6.2) # random warping scale
-    
+
     range_ = np.linspace(128-rand_coverage, 128+rand_coverage, 5)
     mapx = np.broadcast_to(range_, (5,5))
     mapy = mapx.T
@@ -64,7 +64,7 @@ def random_warp_rev(image, res=64):
     warped_image = cv2.remap(image, interp_mapx, interp_mapy, cv2.INTER_LINEAR)
     src_points = np.stack([mapx.ravel(), mapy.ravel()], axis=-1)
     dst_points = np.mgrid[dst_pnts_slice,dst_pnts_slice].T.reshape(-1,2)
-    mat = umeyama(src_points, dst_points, True)[0:2]
+    mat = umeyama(src_points, dst_points, True)[:2]
     target_image = cv2.warpAffine(image, mat, (res,res))
     return warped_image, target_image
 
@@ -78,24 +78,24 @@ def random_color_match(image, fns_all_trn_data):
     r = 60 # only take color information of the center area
     src_img = cv2.resize(image, (256,256))
     tar_img = cv2.resize(tar_img, (256,256))  
-    
+
     # randomly transform to XYZ color space
     rand_color_space_to_XYZ = np.random.choice([True, False])
     if rand_color_space_to_XYZ:
         src_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2XYZ)
         tar_img = cv2.cvtColor(tar_img, cv2.COLOR_BGR2XYZ)
-    
+
     # compute statistics
     mt = np.mean(tar_img[r:-r,r:-r,:], axis=(0,1))
     st = np.std(tar_img[r:-r,r:-r,:], axis=(0,1))
     ms = np.mean(src_img[r:-r,r:-r,:], axis=(0,1))
     ss = np.std(src_img[r:-r,r:-r,:], axis=(0,1))    
-    
+
     # randomly interpolate the statistics
     rand_ratio = np.random.uniform()
     mt = rand_ratio * mt + (1 - rand_ratio) * ms
     st = rand_ratio * st + (1 - rand_ratio) * ss
-    
+
     # Apply color transfer from src to tar domain
     if ss.any() <= 1e-7: return src_img    
     result = st * (src_img.astype(np.float32) - ms) / (ss+1e-7) + mt
@@ -103,7 +103,7 @@ def random_color_match(image, fns_all_trn_data):
         result = result - result.min()
     if result.max() > 255:
         result = (255.0/result.max()*result).astype(np.float32)
-    
+
     # transform back from XYZ to BGR color space if necessary
     if rand_color_space_to_XYZ:
         result = cv2.cvtColor(result.astype(np.uint8), cv2.COLOR_XYZ2BGR)
@@ -113,24 +113,24 @@ def read_image(fn, fns_all_trn_data, dir_bm_eyes=None, res=64, prob_random_color
                use_da_motion_blur=True, use_bm_eyes=True, 
                random_transform_args=random_transform_args):
     if dir_bm_eyes is None:
-        raise ValueError(f"dir_bm_eyes is not set.")
-        
+        raise ValueError("dir_bm_eyes is not set.")
+
     # https://github.com/tensorflow/tensorflow/issues/5552
     # TensorFlow converts str to bytes in most places, including sess.run().
     if type(fn) == type(b"bytes"):
         fn = fn.decode("utf-8")
         dir_bm_eyes = dir_bm_eyes.decode("utf-8")
         fns_all_trn_data = [fn_all.decode("utf-8") for fn_all in fns_all_trn_data]
-    
+
     raw_fn = PurePath(fn).parts[-1]
     image = cv2.imread(fn)
     if image is None:
         print(f"Failed reading image {fn}.")
-        raise IOError(f"Failed reading image {fn}.")        
+        raise IOError(f"Failed reading image {fn}.")
     if np.random.uniform() <= prob_random_color_match:
         image = random_color_match(image, fns_all_trn_data)
     image = cv2.resize(image, (256,256)) / 255 * 2 - 1
-    
+
     if use_bm_eyes:
         bm_eyes = cv2.imread(f"{dir_bm_eyes}/{raw_fn}")
         if bm_eyes is None:
@@ -142,21 +142,21 @@ def read_image(fn, fns_all_trn_data, dir_bm_eyes=None, res=64, prob_random_color
         bm_eyes = cv2.resize(bm_eyes, (256,256)) / 255.
     else:
         bm_eyes = np.zeros_like(image)
-    
+
     image = np.concatenate([image, bm_eyes], axis=-1)
     image = random_transform(image, **random_transform_args)
     warped_img, target_img = random_warp_rev(image, res=res)
-    
+
     bm_eyes = target_img[...,3:]
     warped_img = warped_img[...,:3]
     target_img = target_img[...,:3]
-    
+
     # Motion blur data augmentation:
     # we want the model to learn to preserve motion blurs of input images
     if np.random.uniform() < 0.25 and use_da_motion_blur: 
         warped_img, target_img = motion_blur([warped_img, target_img])
-    
+
     warped_img, target_img, bm_eyes = \
     warped_img.astype(np.float32), target_img.astype(np.float32), bm_eyes.astype(np.float32)
-    
+
     return warped_img, target_img, bm_eyes

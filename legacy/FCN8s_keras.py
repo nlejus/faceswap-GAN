@@ -29,8 +29,13 @@ def FCN(num_output=21, input_shape=(500, 500, 3)):
             height = x._keras_shape[COL_AXIS]
             target_width = target_layer._keras_shape[ROW_AXIS]
             target_height = target_layer._keras_shape[COL_AXIS]
-            cropped = Cropping2D(cropping=((offset[0], width - offset[0] - target_width), (offset[1], height - offset[1] - target_height)), name='{}'.format(name))(x)
-            return cropped
+            return Cropping2D(
+                cropping=(
+                    (offset[0], width - offset[0] - target_width),
+                    (offset[1], height - offset[1] - target_height),
+                ),
+                name=f'{name}',
+            )(x)
         return f
       
     input_tensor = Input(shape=input_shape)  

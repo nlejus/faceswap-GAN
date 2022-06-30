@@ -13,7 +13,7 @@ def random_channel_shift(x, intensity=10, channel_axis=2):
     return x
 
 def random_transform( image, rotation_range, zoom_range, shift_range, random_flip ):
-    h,w = image.shape[0:2]
+    h,w = image.shape[:2]
     #color_shifted_image = random_channel_shift(image)
     rotation = numpy.random.uniform( -rotation_range, rotation_range )
     scale = numpy.random.uniform( 1 - zoom_range, 1 + zoom_range )
@@ -44,7 +44,7 @@ def random_warp( image ):
 
     src_points = numpy.stack( [ mapx.ravel(), mapy.ravel() ], axis=-1 )
     dst_points = numpy.mgrid[0:65:16,0:65:16].T.reshape(-1,2)
-    mat = umeyama( src_points, dst_points, True )[0:2]
+    mat = umeyama( src_points, dst_points, True )[:2]
 
     target_image = cv2.warpAffine( image, mat, (64,64) )
 
@@ -67,7 +67,7 @@ def random_warp128(image):
 
     src_points = numpy.stack([mapx.ravel(), mapy.ravel() ], axis=-1)
     dst_points = numpy.mgrid[0:65*2:16*2,0:65*2:16*2].T.reshape(-1,2)
-    mat = umeyama(src_points, dst_points, True)[0:2]
+    mat = umeyama(src_points, dst_points, True)[:2]
 
     target_image = cv2.warpAffine(image, mat, (64*2,64*2))
 
@@ -90,10 +90,10 @@ def random_warp224(image):
 
     src_points = numpy.stack([mapx.ravel(), mapy.ravel() ], axis=-1)
     dst_points = numpy.mgrid[0:65*4:16*4,0:65*4:16*4].T.reshape(-1,2)
-    mat = umeyama(src_points, dst_points, True)[0:2]
+    mat = umeyama(src_points, dst_points, True)[:2]
 
     target_image = cv2.warpAffine(image, mat, (64*4,64*4))
-    
+
     target_image = cv2.resize(target_image, (224,224))
     warped_image = cv2.resize(warped_image, (224,224))
 

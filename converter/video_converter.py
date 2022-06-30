@@ -23,13 +23,13 @@ class VideoConverter(object):
         self.prev_y0 = 0
         self.prev_y1 = 0        
         self.frames = 0
-        
+
         # face transformer
         self.ftrans = FaceTransformer()
-        
+
         # MTCNN face detector
         self.fdetect = None
-        
+
         # Kalman filters
         self.kf0 = None
         self.kf1 = None
@@ -73,16 +73,19 @@ class VideoConverter(object):
         
     def convert(self, input_fn, output_fn, options, duration=None):
         self.check_options(options)
-        
+
         if options['use_kalman_filter']:
             self._init_kalman_filters(options["kf_noise_coef"])
-        
+
         self.frames = 0
         self.prev_x0 = self.prev_x1 = self.prev_y0 = self.prev_y1 = 0
-        
+
         if self.fdetect is None:
-            raise Exception(f"face detector has not been set through VideoConverter.set_face_detector() yet.")
-        
+            raise Exception(
+                "face detector has not been set through VideoConverter.set_face_detector() yet."
+            )
+
+
         clip1 = VideoFileClip(input_fn)
         if type(duration) is tuple:
             clip = clip1.fl_image(lambda img: self.process_video(img, options)).subclip(duration[0], duration[1])
@@ -95,7 +98,7 @@ class VideoConverter(object):
         except:
             pass
         
-    def process_video(self, input_img, options): 
+    def process_video(self, input_img, options):
         """Transform detected faces in single input frame."""
         image = input_img
 
@@ -131,19 +134,15 @@ class VideoConverter(object):
                     )
                     self._set_prev_coord(x0, x1, y0, y1)
                     best_conf_score = conf_score
-                    self.frames += 1
-                elif conf_score <= best_conf_score:
-                    self.frames += 1
-                else:
+                elif conf_score > best_conf_score:
                     if conf_score >= best_conf_score:
                         self._set_prev_coord(x0, x1, y0, y1)
                         best_conf_score = conf_score
                     if options["use_kalman_filter"]:
-                        for i in range(200):
+                        for _ in range(200):
                             self.kf0.predict()
                             self.kf1.predict()
-                    self.frames += 1
-            
+                self.frames += 1
             # transform face
             try:
                 # get detected face
@@ -179,7 +178,7 @@ class VideoConverter(object):
                 print(f"Face alignment error occurs at frame {self.frames}.")
                 # get detected face
                 det_face_im = input_img[int(x0):int(x1),int(y0):int(y1),:]
-                
+
                 result, _, result_a = self.ftrans.transform(
                     det_face_im,
                     direction=options["direction"], 
@@ -189,12 +188,12 @@ class VideoConverter(object):
                     )
 
             comb_img[int(x0):int(x1),input_img.shape[1]+int(y0):input_img.shape[1]+int(y1),:] = result
-            
+
             # Enhance output
             if options["enhance"] != 0:
                 comb_img = -1*options["enhance"] * get_init_comb_img(input_img) + (1+options["enhance"]) * comb_img
                 comb_img = np.clip(comb_img, 0, 255)              
-            
+
             if conf_score >= best_conf_score:
                 mask_map[int(x0):int(x1),int(y0):int(y1),:] = result_a
                 mask_map = np.clip(mask_map + .15 * input_img, 0, 255)   
@@ -207,7 +206,7 @@ class VideoConverter(object):
             triple_img = get_init_triple_img(input_img)
             triple_img[:, :input_img.shape[1]*2, :] = comb_img
             triple_img[:, input_img.shape[1]*2:, :] = mask_map
-        
+
         if options["output_type"] == 1:
             return comb_img[:, input_img.shape[1]:, :]  # return only result image
         elif options["output_type"] == 2:
@@ -218,17 +217,17 @@ class VideoConverter(object):
     @staticmethod
     def check_options(options):
         if options["roi_coverage"] <= 0 or options["roi_coverage"] >= 1:
-            raise ValueError(f"roi_coverage should be between 0 and 1 (exclusive).")
+            raise ValueError("roi_coverage should be between 0 and 1 (exclusive).")
         if options["bbox_moving_avg_coef"] < 0 or options["bbox_moving_avg_coef"] > 1:
-            raise ValueError(f"bbox_moving_avg_coef should be between 0 and 1 (inclusive).")
+            raise ValueError("bbox_moving_avg_coef should be between 0 and 1 (inclusive).")
         if options["detec_threshold"] < 0 or options["detec_threshold"] > 1:
-            raise ValueError(f"detec_threshold should be between 0 and 1 (inclusive).")
+            raise ValueError("detec_threshold should be between 0 and 1 (inclusive).")
         if options["use_smoothed_bbox"] not in [True, False]:
-            raise ValueError(f"use_smoothed_bbox should be a boolean.")
+            raise ValueError("use_smoothed_bbox should be a boolean.")
         if options["use_kalman_filter"] not in [True, False]:
-            raise ValueError(f"use_kalman_filter should be a boolean.")
+            raise ValueError("use_kalman_filter should be a boolean.")
         if options["use_auto_downscaling"] not in [True, False]:
-            raise ValueError(f"use_auto_downscaling should be a boolean.")
+            raise ValueError("use_auto_downscaling should be a boolean.")
         if options["output_type"] not in range(1,4):
             ot = options["output_type"]
             raise ValueError(f"Received an unknown output_type option: {ot}.")
